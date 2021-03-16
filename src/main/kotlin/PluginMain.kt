@@ -1,5 +1,7 @@
 package org.example.mirai.plugin
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import net.mamoe.mirai.console.command.CommandSender.Companion.toCommandSender
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
@@ -7,10 +9,9 @@ import net.mamoe.mirai.event.events.FriendMessageEvent
 import net.mamoe.mirai.event.events.GroupMessageEvent
 import net.mamoe.mirai.event.events.MessageEvent
 import net.mamoe.mirai.event.globalEventChannel
-import net.mamoe.mirai.message.data.LightApp
-import net.mamoe.mirai.message.data.MessageContent
-import net.mamoe.mirai.message.data.content
+import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.utils.info
+import kotlin.math.log
 
 object PluginMain : KotlinPlugin(
     JvmPluginDescription(
@@ -33,15 +34,28 @@ object PluginMain : KotlinPlugin(
         this.globalEventChannel().subscribeAlways<MessageEvent>{ event ->
             logger.info(event.toString())
             logger.info(event.message.toString())
-            this.toCommandSender().sendMessage("Test Res")
+            this.toCommandSender().sendMessage("Received")
         }
 
         this.globalEventChannel().subscribeAlways<FriendMessageEvent>{ event ->
             logger.info("This is friendMessage: ${event.senderName}")
             event.toCommandSender().sendMessage("朋友消息")
-            logger.info("消息内容: ${event.message.content}")
-            val la = LightApp(event.message.content)
-            logger.info("la: ${la}")
+            // 小程序
+            if (event.message.filterIsInstance<LightApp>().isNotEmpty()) {
+                logger.info("小程序消息, 消息内容: ${event.message.content}")
+                val jsonObj = Json.parseToJsonElement(event.message.content)
+                val desc = jsonObj.jsonObject.get("desc")
+                val meta = jsonObj.jsonObject.get("meta")
+                logger.info("desc: $desc")
+                logger.info("meta: $meta")
+                val metaUrl = meta?.jsonObject?.get("detail_1")?.jsonObject?.get("qqdocurl")
+                event.toCommandSender().sendMessage("已解析小程序的metaUrl:$metaUrl")
+                logger.info("metaUrl: $metaUrl")
+            }
+            // 文本消息
+            if (event.message.filterIsInstance<PlainText>().isNotEmpty()) {
+                logger.info("文本消息, 消息内容: ${event.message.content}")
+            }
         }
 
         this.globalEventChannel().subscribeAlways<GroupMessageEvent> { event ->
